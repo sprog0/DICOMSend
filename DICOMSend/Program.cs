@@ -16,20 +16,26 @@ namespace DicomConverter
         private readonly int _pacsServerPort;
         private readonly string _localAeTitle;
         private readonly string _remoteAeTitle;
+        private readonly DicomTransferSyntax? _compression;
+        private readonly bool _deleteAfterSend;
+        private readonly bool _reEncodeText;
 
         private static readonly Encoding SourceEncoding = Encoding.GetEncoding(1251);
         private static readonly Encoding TargetEncoding = Encoding.UTF8;
 
-        public DicomProcessor(string pacsServerIp, int pacsServerPort,
-                     string localAeTitle, string remoteAeTitle)
+        public DicomProcessor(string pacsServerIp, int pacsServerPort, string localAeTitle, string remoteAeTitle,
+                     DicomTransferSyntax? compression, bool deleteAfterSend, bool reEncodeText)
         {
             _pacsServerIp = pacsServerIp;
             _pacsServerPort = pacsServerPort;
             _localAeTitle = localAeTitle;
             _remoteAeTitle = remoteAeTitle;
+            _compression = compression;
+            _deleteAfterSend = deleteAfterSend;
+            _reEncodeText = reEncodeText;
         }
 
-        public async Task ProcessFolderAsync(string folderPath, DicomTransferSyntax? compression, bool deleteAfterSend, bool reEncodeText)
+        public async Task ProcessFolderAsync(string folderPath)
         {
             var files = Directory.GetFiles(folderPath, "*.dcm", SearchOption.AllDirectories);
             if (files.Length == 0)
@@ -46,7 +52,7 @@ namespace DicomConverter
                 try
                 {
                     Console.WriteLine($"Processing {Path.GetFileName(filePath)}...");
-                    bool success = await ProcessSingleFileAsync(filePath, compression, deleteAfterSend, reEncodeText);
+                    bool success = await ProcessSingleFileAsync(filePath);
                     if (success)
                     {
                         successCount++;
@@ -66,15 +72,15 @@ namespace DicomConverter
             Console.WriteLine($"Processing complete. Successfully processed {successCount} of {files.Length} files");
         }
 
-        private async Task<bool> ProcessSingleFileAsync(string filePath, DicomTransferSyntax? compression, bool deleteAfterSend, bool reEncodeText)
+        private async Task<bool> ProcessSingleFileAsync(string filePath)
         {
             try
             {
                 var originalFile = await DicomFile.OpenAsync(filePath);
-                var processedFile = ConvertDicomFile(originalFile, compression, reEncodeText);
+                var processedFile = ConvertDicomFile(originalFile);
                 var sendSuccess = await SendToPacsAsync(processedFile);
 
-                if (sendSuccess && deleteAfterSend)
+                if (sendSuccess && _deleteAfterSend)
                 {
                     File.Delete(filePath);
                 }
@@ -88,15 +94,15 @@ namespace DicomConverter
             }
         }
 
-        private DicomFile ConvertDicomFile(DicomFile originalFile, DicomTransferSyntax? compression, bool reEncodeText)
+        private DicomFile ConvertDicomFile(DicomFile originalFile)
         {
             DicomFile processedFile = originalFile;
-            if (compression != null)
+            if (_compression != null)
             {
-                processedFile = originalFile.Clone(compression);
-                processedFile.FileMetaInfo.AddOrUpdate(DicomTag.TransferSyntaxUID, compression.UID.UID);
+                processedFile = originalFile.Clone(_compression);
+                processedFile.FileMetaInfo.AddOrUpdate(DicomTag.TransferSyntaxUID, _compression.UID.UID);
             }
-            if (reEncodeText) ConvertTextEncoding(processedFile.Dataset);
+            if (_reEncodeText) ConvertTextEncoding(processedFile.Dataset);
             processedFile.Dataset.AddOrUpdate(DicomTag.SpecificCharacterSet, "ISO_IR 192");
             return processedFile;
         }
@@ -208,15 +214,15 @@ namespace DicomConverter
                     }
                 }
 
-                var processor = new DicomProcessor(pacsIp, pacsPort, localAet, remoteAet);
+                var processor = new DicomProcessor(pacsIp, pacsPort, localAet, remoteAet, compression, deleteAfterSend, reEncodeText);
 
                 if (processFolder)
                 {
-                    await processor.ProcessFolderAsync(path, compression, deleteAfterSend, reEncodeText);
+                    await processor.ProcessFolderAsync(path);
                 }
                 else
                 {
-                    var success = await processor.ProcessSingleFileAsync(path, compression, deleteAfterSend, reEncodeText);
+                    var success = await processor.ProcessSingleFileAsync(path);
                     Console.WriteLine(success ? "Processing completed successfully" : "Processing failed");
                     Environment.Exit(success ? 0 : 1);
                 }
