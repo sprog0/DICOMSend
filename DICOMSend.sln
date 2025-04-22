@@ -5,6 +5,11 @@ VisualStudioVersion = 17.11.35222.181
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DICOMSend", "DICOMSend\DICOMSend.csproj", "{9A7C908C-F58F-45BC-B659-2756BCE7F007}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Элементы решения", "Элементы решения", "{639F11F4-29A1-452B-9586-D78B11A8DA94}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
