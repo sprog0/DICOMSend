@@ -1,3 +1,3 @@
 ﻿# DICOMSend
 
-Для сборки понадобится fo-dicom
+Для сборки понадобится https://github.com/fo-dicom/fo-dicom
